@@ -1,0 +1,91 @@
+#讀取圖片
+import os, cv2, glob
+
+images = []
+labels = []
+dict_labels = {"Cat":0, "Dog":1}
+
+for folders in glob.glob(r"C:\\Users\\Tibame_T14\\Desktop\\上課講義\\專題\\TrainingModel\\test\\*"):
+    print(folders, "照片讀取中..")
+    for filename in os.listdir(folders):
+        label = folders.split("\\")[-1]
+        try:
+            img = cv2.imread(os.path.join(folders,filename))
+            img = cv2.resize(img, dsize=(80,80))
+            if img is not None:
+                images.append(img)
+                labels.append(dict_labels[label])
+        except:
+            pass
+print("照片讀取完畢")
+
+
+
+
+
+#資料預處理
+
+from sklearn.model_selection import train_test_split
+import numpy as np
+from keras.utils import np_utils
+
+#(資料分割)
+train_feature, test_feature, train_label, test_label = train_test_split(images, labels, test_size=0.2)
+
+train_feature = np.array(train_feature)
+test_feature = np.array(test_feature)
+train_label = np.array(train_label)
+test_label = np.array(test_label)
+
+#(顯示訓練及測試資料內容)
+print("訓練資料維度:{}".format(train_feature.shape))
+print("訓練標籤維度:{}".format(train_label.shape))
+print("測試資料維度:{}".format(train_feature.shape))
+print("測試標籤維度:{}".format(train_label.shape))
+
+#(圖片資料標準化)
+train_feature = train_feature/255
+test_feature = test_feature/255
+
+#(標籤轉換為OneHot編碼)
+train_label = np_utils.to_categorical(train_label)
+test_label = np_utils.to_categorical(test_label)
+
+
+
+#建立CNN模型
+
+from keras.models import Sequential
+from keras.layers import Conv2D, MaxPooling2D, Dropout, Flatten, Dense
+
+model = Sequential()
+#第一層
+model.add(Conv2D(filters=8, kernel_size=(5,5), padding='same', input_shape=(80,80,3), activation='relu'))
+model.add(MaxPooling2D(pool_size=(2,2)))
+model.add(Dropout(0.2))
+#第二層
+model.add(Conv2D(filters=16, kernel_size=(5,5), padding='same', activation='relu'))
+model.add(MaxPooling2D(pool_size=(2,2)))
+model.add(Dropout(0.2))
+#第三層
+model.add(Conv2D(filters=32, kernel_size=(5,5), padding='same', activation='relu'))
+model.add(MaxPooling2D(pool_size=(2,2)))
+model.add(Dropout(0.2))
+#平坦層
+model.add(Flatten())
+model.add(Dropout(0.2))
+#全連結隱藏層
+model.add(Dense(units=128, activation='relu'))
+#輸出層
+model.add(Dense(units=2, activation='softmax'))
+
+#查看權重數量
+model.summary()
+
+#訓練模型及評估準確率
+model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+model.fit(x=train_feature, y=train_label, validation_split=0.2, epochs=20, batch_size=100, verbose=2)
+
+#評估準確率
+scores = model.evaluate(test_feature, test_label)
+print("\n準確率=", scores[1])
